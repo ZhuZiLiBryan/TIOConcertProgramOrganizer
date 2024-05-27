@@ -1,7 +1,9 @@
 import csv
 
-# TODO: Refactor to take user input
+# TODO: Refactor to take user input for input file name
 FILENAME = "sp24.csv"
+NAME_COL = 2
+SECTION_COL = 4
 
  # Map section/committee -> people in section
 section_map = {}
@@ -11,9 +13,14 @@ section_map = {}
 with open(FILENAME, encoding="utf-8") as csv_file:
 
     csv_reader = csv.reader(csv_file, delimiter=",", quotechar='"')
+
+    # Skip header line
+    next(csv_reader)
+
+    # Iterate through CSV and member to sections they've listed
     for row in csv_reader:
-        member_name = row[2]
-        sections = row[4]
+        member_name = row[NAME_COL]
+        sections = row[SECTION_COL]
 
         # If in multiple sections, seperate sections using comma as delimiter
         sections = sections.split(",")
@@ -21,14 +28,38 @@ with open(FILENAME, encoding="utf-8") as csv_file:
 
         # Add member to sections they've listed
         for s in sections:
+
+            # ! All voice parts listed under "Voice"
             if "Voice" in s:
                 s = "Voice"
             section_map[s] = section_map.get(s, [])
-            section_map[s].append(member_name)
+            section_map[s].append(member_name.title())
     
 
-with open("output.txt", "w") as output:
+# Write to .md file
+with open("output.md", "w") as output:
     for k, v in section_map.items():
-            output.write("**" + k + "**" + ": " +  ', '.join(v))
+            # Handle the edge cases at end
+            if k == "None":
+                continue
+
+            # Heading of each section is section name
+            output.write("## " + k + "\n\n")
+
+            for name in sorted(v):
+                output.write("* " + name + "\n")
+
             output.write("\n")
+    
+    # Handle any names that were not in any section
+    if "None" in section_map:
+        k = "TO SORT MANUALLY"
+        v = section_map["None"]
+        # Heading of each section is section name
+        output.write("## " + k + "\n\n")
+
+        for name in sorted(v):
+            output.write("* " + name + "\n")
+
+        output.write("\n")
 
