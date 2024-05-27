@@ -31,6 +31,7 @@ with open(FILENAME, encoding="utf-8") as csv_file:
 
             # ! All voice parts listed under "Voice"
             if "Voice" in s:
+                member_name += " (" + s.split()[2].lower() +")" # 2nd index is the voice part
                 s = "Voice"
             section_map[s] = section_map.get(s, set())
             section_map[s].add(member_name.title())
