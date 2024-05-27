@@ -32,8 +32,8 @@ with open(FILENAME, encoding="utf-8") as csv_file:
             # ! All voice parts listed under "Voice"
             if "Voice" in s:
                 s = "Voice"
-            section_map[s] = section_map.get(s, [])
-            section_map[s].append(member_name.title())
+            section_map[s] = section_map.get(s, set())
+            section_map[s].add(member_name.title())
     
 
 # Write to .md file
@@ -46,12 +46,13 @@ with open("output.md", "w") as output:
             # Heading of each section is section name
             output.write("## " + k + "\n\n")
 
+            # Names are written in sorted order
             for name in sorted(v):
                 output.write("* " + name + "\n")
 
             output.write("\n")
     
-    # Handle any names that were not in any section
+    # Handle any names that were not in any section at the end
     if "None" in section_map:
         k = "TO SORT MANUALLY"
         v = section_map["None"]
