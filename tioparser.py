@@ -1,67 +1,108 @@
 import csv
 
-# TODO: Refactor to take user input for input file name
 FILENAME = "sp24.csv"
 NAME_COL = 2
 SECTION_COL = 4
 
- # Map section/committee -> people in section
+# Custom section order
+SECTION_ORDER = [
+    "Conductors", "Violin I", "Violin II", "Violas", "Violoncellos", "Contrabasses",
+    "Flutes", "Oboes", "Clarinets", "Bass Clarinets", "Alto Saxophones",
+    "Tenor Saxophones", "Baritone Saxophones", "Bassoons", "French Horns",
+    "Trumpets", "Trombones", "Euphoniums", "Tuba", "Percussion", "Pianos",
+    "Voice", "Acoustic Guitars", "Electric Guitars", "Electric Basses",
+    "Harp", "EWI", "Tech Team", "Art Committee"
+]
+
 section_map = {}
 
-# column 2 is the "names"
-# column 4 is the "sections"
+def last_name_key(fullname: str):
+    """Sort key extracting last name."""
+    parts = fullname.split()
+    return parts[-1].lower(), fullname.lower()
+
+# Voice part priority
+VOICE_ORDER = {
+    "soprano": 1,
+    "alto": 2,
+    "tenor": 3,
+    "bass": 4
+}
+
+def voice_sort_key(fullname: str):
+    """Sort names in Voice section by voice part → last name."""
+    # fullname will be like: "Alice Zhang (alto)"
+    if "(" in fullname and ")" in fullname:
+        part = fullname.split("(")[1].split(")")[0].lower()
+    else:
+        part = "zzz"  # fallback
+        
+    part_rank = VOICE_ORDER.get(part, 999)
+    return (part_rank, last_name_key(fullname))
+
+
 with open(FILENAME, encoding="utf-8") as csv_file:
-
     csv_reader = csv.reader(csv_file, delimiter=",", quotechar='"')
+    next(csv_reader)  # skip header
 
-    # Skip header line
-    next(csv_reader)
-
-    # Iterate through CSV and member to sections they've listed
     for row in csv_reader:
-        member_name = row[NAME_COL]
-        sections = row[SECTION_COL]
+        base_name = row[NAME_COL].title()
+        sections = [s.strip() for s in row[SECTION_COL].split(",")]
 
-        # If in multiple sections, seperate sections using comma as delimiter
-        sections = sections.split(",")
-        sections = [s.strip() for s in sections]
+        voice_part = None
 
-        # Add member to sections they've listed
+        # Check if any section is Voice with part
+        for s in sections:
+            if "Voice" in s:
+                # extract part: Voice - Soprano → "soprano"
+                voice_part = s.split()[2].lower()
+
         for s in sections:
 
-            # ! All voice parts listed under "Voice"
             if "Voice" in s:
-                member_name += " (" + s.split()[2].lower() +")" # 2nd index is the voice part
+                # Add voice with (part)
+                display_name = f"{base_name} ({voice_part})"
                 s = "Voice"
-            section_map[s] = section_map.get(s, set())
-            section_map[s].add(member_name.title())
-    
+            else:
+                # Non-voice sections: plain name
+                display_name = base_name
 
-# Write to .md file
+            section_map.setdefault(s, set()).add(display_name)
+
+
+# Determine leftover sections not in list
+other_sections = sorted(
+    [sec for sec in section_map.keys() if sec not in SECTION_ORDER and sec != "None"]
+)
+
+final_sections = SECTION_ORDER + other_sections
+
+
 with open("output.md", "w") as output:
-    for k, v in section_map.items():
-            # Handle the edge cases at end
-            if k == "None":
-                continue
+    for section in final_sections:
 
-            # Heading of each section is section name
-            output.write("## " + k + "\n\n")
+        if section not in section_map:
+            continue
+        if section == "None":
+            continue
 
-            # Names are written in sorted order
-            for name in sorted(v):
-                output.write("* " + name + "\n")
+        # Write section header
+        output.write(section + "\n\n")
 
-            output.write("\n")
-    
-    # Handle any names that were not in any section at the end
-    if "None" in section_map:
-        k = "TO SORT MANUALLY"
-        v = section_map["None"]
-        # Heading of each section is section name
-        output.write("## " + k + "\n\n")
+        # Voice: sort by part first
+        if section == "Voice":
+            sorted_names = sorted(section_map[section], key=voice_sort_key)
+        else:
+            sorted_names = sorted(section_map[section], key=last_name_key)
 
-        for name in sorted(v):
-            output.write("* " + name + "\n")
+        for name in sorted_names:
+            output.write(name + "\n")
 
         output.write("\n")
 
+    # Handle names not in any section
+    if "None" in section_map:
+        output.write("TO SORT MANUALLY\n\n")
+        for name in sorted(section_map["None"], key=last_name_key):
+            output.write(name + "\n")
+        output.write("\n")
